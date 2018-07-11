@@ -108,13 +108,13 @@ public class JobTrackingWorkerReporter implements JobTrackingReporter {
                 throw new JobReportingTransientException(
                         MessageFormat.format(FAILED_TO_REPORT_PROGRESS, jobTaskId, te.getMessage()), te);
             } catch (final SQLException se) {
-                LOG.warn("Error in reportJobTaskProgress for jobTaskId '{}'", jobTaskId, se);
+                LOG.warn(Thread.currentThread() + ": Error in reportJobTaskProgress for jobTaskId '{}'", jobTaskId, se);
                 //  Allow for retries in the event that the source of the error is from concurrent sessions
                 //  attempting table and/or index creation at the same time.
                 if (retryCount++ < maxRetries &&
                         (se.getMessage().contains("duplicate key value violates unique constraint") ||
                                 se.getMessage().matches("(?s).*(relation|type).*already exists.*"))) {
-                    LOG.info(MessageFormat.format("Retrying reportJobTaskProgress() call for job task {0}. Retry count {1}.",
+                    LOG.info(MessageFormat.format(Thread.currentThread() + ": Retrying reportJobTaskProgress() call for job task {0}. Retry count {1}.",
                             jobTaskId, retryCount));
                 } else {
                     throw new JobReportingException(
@@ -134,14 +134,30 @@ public class JobTrackingWorkerReporter implements JobTrackingReporter {
      */
     @Override
     public List<JobTrackingWorkerDependency> reportJobTaskComplete(final String jobTaskId) throws JobReportingException {
-        try (Connection conn = getConnection()) {
-            return report(conn, jobTaskId, JobStatus.Completed);
-        } catch (final SQLTransientException | JobReportingTransientException te) {
-            throw new JobReportingTransientException(
-                    MessageFormat.format(FAILED_TO_REPORT_COMPLETION, jobTaskId, te.getMessage()), te);
-        } catch (final SQLException se) {
-            throw new JobReportingException(
-                    MessageFormat.format(FAILED_TO_REPORT_COMPLETION, jobTaskId, se.getMessage()), se);
+        int retryCount = 0;
+        final int maxRetries = 1;
+
+        while(true) {
+            try (Connection conn = getConnection()) {
+                return report(conn, jobTaskId, JobStatus.Completed);
+            } catch (final SQLTransientException | JobReportingTransientException te) {
+                throw new JobReportingTransientException(
+                        MessageFormat.format(FAILED_TO_REPORT_PROGRESS, jobTaskId, te.getMessage()), te);
+            } catch (final SQLException se) {
+                LOG.warn(Thread.currentThread() + ": Error in reportJobTaskComplete for jobTaskId '{}'", jobTaskId, se);
+                //  Allow for retries in the event that the source of the error is from concurrent sessions
+                //  attempting table and/or index creation at the same time.
+                if (retryCount++ < maxRetries &&
+                        (se.getMessage().contains("duplicate key value violates unique constraint") ||
+                                se.getMessage().matches("(?s).*(relation|type).*already exists.*"))) {
+                    LOG.info(MessageFormat.format(Thread.currentThread() + ": Retrying reportJobTaskComplete() call for job task {0}. Retry count {1}.",
+                            jobTaskId, retryCount));
+                } else {
+                    throw new JobReportingException(
+                            MessageFormat.format(FAILED_TO_REPORT_COMPLETION, jobTaskId,
+                                    se.getMessage()), se);
+                }
+            }
         }
     }
 
@@ -154,15 +170,30 @@ public class JobTrackingWorkerReporter implements JobTrackingReporter {
      */
     @Override
     public void reportJobTaskRetry(final String jobTaskId, final String retryDetails) throws JobReportingException {
-        try (Connection conn = getConnection()) {
-            //TODO - Is there no way to report retryDetails?
-            report(conn, jobTaskId, JobStatus.Active);
-        } catch (final SQLTransientException | JobReportingTransientException te) {
-            throw new JobReportingTransientException(
-                    MessageFormat.format(FAILED_TO_REPORT_RETRY, jobTaskId, te.getMessage()), te);
-        } catch (final SQLException se) {
-            throw new JobReportingException(
-                    MessageFormat.format(FAILED_TO_REPORT_RETRY, jobTaskId, se.getMessage()), se);
+        int retryCount = 0;
+        final int maxRetries = 1;
+
+        while(true) {
+            try (Connection conn = getConnection()) {
+                report(conn, jobTaskId, JobStatus.Active);
+            } catch (final SQLTransientException | JobReportingTransientException te) {
+                throw new JobReportingTransientException(
+                        MessageFormat.format(FAILED_TO_REPORT_RETRY, jobTaskId, te.getMessage()), te);
+            } catch (final SQLException se) {
+                LOG.warn(Thread.currentThread() + ": Error in reportJobTaskRetry for jobTaskId '{}'", jobTaskId, se);
+                //  Allow for retries in the event that the source of the error is from concurrent sessions
+                //  attempting table and/or index creation at the same time.
+                if (retryCount++ < maxRetries &&
+                        (se.getMessage().contains("duplicate key value violates unique constraint") ||
+                                se.getMessage().matches("(?s).*(relation|type).*already exists.*"))) {
+                    LOG.info(MessageFormat.format(Thread.currentThread() + ": Retrying reportJobTaskRetry() call for job task {0}. Retry count {1}.",
+                            jobTaskId, retryCount));
+                } else {
+                    throw new JobReportingException(
+                            MessageFormat.format(FAILED_TO_REPORT_RETRY, jobTaskId,
+                                    se.getMessage()), se);
+                }
+            }
         }
     }
 
@@ -175,22 +206,36 @@ public class JobTrackingWorkerReporter implements JobTrackingReporter {
      */
     @Override
     public void reportJobTaskRejected(final String jobTaskId, final JobTrackingWorkerFailure rejectionDetails) throws JobReportingException {
-        try (Connection conn = getConnection()) {
+        final ObjectMapper mapper = new ObjectMapper();
+        final DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        mapper.setDateFormat(df);
 
-            final ObjectMapper mapper = new ObjectMapper();
-            final DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
-            mapper.setDateFormat(df);
+        int retryCount = 0;
+        final int maxRetries = 1;
 
-            reportFailure(conn, jobTaskId, mapper.writeValueAsString(rejectionDetails));
-
-        } catch (final SQLTransientException | JobReportingTransientException te) {
-            throw new JobReportingTransientException(
-                    MessageFormat.format(FAILED_TO_REPORT_REJECTION, jobTaskId, te.getMessage()), te);
-        } catch (final SQLException se) {
-            throw new JobReportingException(
-                    MessageFormat.format(FAILED_TO_REPORT_REJECTION, jobTaskId, se.getMessage()), se);
-        } catch (final JsonProcessingException e) {
-            throw new JobReportingException("Cannot serialize job task failure details.",e);
+        while(true) {
+            try (Connection conn = getConnection()) {
+                reportFailure(conn, jobTaskId, mapper.writeValueAsString(rejectionDetails));
+            } catch (final SQLTransientException | JobReportingTransientException te) {
+                throw new JobReportingTransientException(
+                        MessageFormat.format(FAILED_TO_REPORT_REJECTION, jobTaskId, te.getMessage()), te);
+            } catch (final SQLException se) {
+                LOG.warn(Thread.currentThread() + ": Error in reportJobTaskRejected for jobTaskId '{}'", jobTaskId, se);
+                //  Allow for retries in the event that the source of the error is from concurrent sessions
+                //  attempting table and/or index creation at the same time.
+                if (retryCount++ < maxRetries &&
+                        (se.getMessage().contains("duplicate key value violates unique constraint") ||
+                                se.getMessage().matches("(?s).*(relation|type).*already exists.*"))) {
+                    LOG.info(MessageFormat.format(Thread.currentThread() + ": Retrying reportJobTaskRejected() call for job task {0}. Retry count {1}.",
+                            jobTaskId, retryCount));
+                } else {
+                    throw new JobReportingException(
+                            MessageFormat.format(FAILED_TO_REPORT_REJECTION, jobTaskId,
+                                    se.getMessage()), se);
+                }
+            } catch (final JsonProcessingException e) {
+                throw new JobReportingException("Cannot serialize job task failure details.",e);
+            }
         }
     }
 
@@ -246,7 +291,7 @@ public class JobTrackingWorkerReporter implements JobTrackingReporter {
         try (CallableStatement stmt = connection.prepareCall(reportProgressFnCallSQL)) {
             stmt.setString(1, jobTaskId);
             stmt.setObject(2, status, Types.OTHER);
-            LOG.info("Reporting progress of job task {} with status {} ...", jobTaskId, status.name());
+            LOG.info(Thread.currentThread() + ": Reporting progress of job task {} with status {} ...", jobTaskId, status.name());
             stmt.execute();
 
             List<JobTrackingWorkerDependency> jobDependencyList = new ArrayList<JobTrackingWorkerDependency>();
@@ -280,7 +325,7 @@ public class JobTrackingWorkerReporter implements JobTrackingReporter {
         try (CallableStatement stmt = connection.prepareCall(reportFailureFnCallSQL)) {
             stmt.setString(1, jobTaskId);
             stmt.setString(2, failureDetails);
-            LOG.info("Reporting failure of job task {} ...", jobTaskId);
+            LOG.info(Thread.currentThread() + ": Reporting failure of job task {} ...", jobTaskId);
             stmt.execute();
         }
     }

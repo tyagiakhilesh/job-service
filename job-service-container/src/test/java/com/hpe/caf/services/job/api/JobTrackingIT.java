@@ -30,13 +30,11 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class JobTrackingIT
-{
+public class JobTrackingIT {
 
-    @Test(enabled=false)
-    public void reportProgresOnCompletedJobTest() throws Exception
-    {
-        System.out.println("thread started!");
+    @Test(enabled = true)
+    public void reportProgresOnCompletedJobTest() throws Exception {
+        System.out.println("--- Starting 'reportProgresOnCompletedJobTest'...");
         final JobsApi jobsApi = createJobsApi();
 
         final WorkerAction workerAction = new WorkerAction();
@@ -53,59 +51,64 @@ public class JobTrackingIT
         final String jobId = UUID.randomUUID().toString();
         final String correlationId = UUID.randomUUID().toString();
         jobsApi.createOrUpdateJob(jobId, newJob, correlationId);
-        System.out.println("New Job created for task: " + jobId);
+        System.out.println("---'reportProgresOnCompletedJobTest' New Job created for task: " + jobId);
 
         final JobTrackingWorkerReporter jobTrackingWorkerReporter = new JobTrackingWorkerReporter();
 
         final ConcurrentLinkedQueue<String> updates = new ConcurrentLinkedQueue<>();
-        for(int index=0; index<10000; index++){
+        for (int index = 0; index < 5; index++) {
             updates.add(jobId + "." + 1 + "*");
         }
-        
+        System.out.println("--- reportProgresOnCompletedJobTest '" + updates.size() + "' Updates to be sent for task: " + jobId);
+        // Threads marking job as 'Active'
         final List<Thread> threads = new ArrayList<>();
-        for(int index=0; index<10; index++){
+        for (int index = 0; index < 3; index++) {
             Thread t = new Thread(() -> {
-               try{
-                   String update = updates.poll();
-                   while(update!=null){
-                    jobTrackingWorkerReporter.reportJobTaskProgress(update, 0);                   
-                   }
-               }
-               catch(final Exception ex){
-                   System.out.println(ex);
-                   throw new RuntimeException(ex);
-               }
+                try {
+                    int totalUpdates = updates.size();
+                    int numberOfUpdatesProcessed = 0;
+                    while (numberOfUpdatesProcessed < totalUpdates) {
+                        final String update = updates.remove();
+                        jobTrackingWorkerReporter.reportJobTaskProgress(update, 0);
+                        numberOfUpdatesProcessed++;
+                        System.out.println("--- reportProgresOnCompletedJobTest '" + updates.size() + "' Updates remaining to be sent for task: " + jobId);
+                    }
+                } catch (final Exception ex) {
+                    System.out.println("---'reportProgresOnCompletedJobTest' Exception reporting progress : "+ ex);
+                    throw new RuntimeException("reportProgresOnCompletedJobTest", ex);
+                }
             });
             threads.add(t);
         }
-
-        for(Thread t:threads){
+        System.out.println("--- reportProgresOnCompletedJobTest Starting threads to update task: " + jobId);
+        for (Thread t : threads) {
             t.start();
         }
-        
+
         Thread.sleep(5000);
-        try{
+        // Main thread marking final job task as 'Complete'
+        try {
+            System.out.println("--- reportProgresOnCompletedJobTest update final job task as 'Complete' for: " + jobId + "." + 1 + "*");
             jobTrackingWorkerReporter.reportJobTaskComplete(jobId + "." + 1 + "*");
-        }
-        catch(final Exception ex){
-            System.out.println(ex);
+        } catch (final Exception ex) {
+            System.out.println("reportProgresOnCompletedJobTest Exception updating final task as 'Complete' : " + ex);
             return;
         }
-        
-        for(final Thread t:threads){
+
+        for (final Thread t : threads) {
             t.join();
         }
 
+        System.out.println("---'reportProgresOnCompletedJobTest' Checking status of job : " + jobId);
         final Job job = jobsApi.getJob(jobId, correlationId);
         final Float complete = 100f;
-        System.out.println("Percentage Complete = " + job.getPercentageComplete());
+        System.out.println("---'reportProgresOnCompletedJobTest' job: " + jobId + " Percentage Complete = " + job.getPercentageComplete());
         Assert.assertEquals(job.getPercentageComplete(), complete);
     }
-    
-    @Test(enabled=true)
-    public void twoSubTaskReportProgressTest() throws Exception
-    {
-        System.out.println("thread started!");
+
+    @Test(enabled = true)
+    public void twoSubTaskReportProgressTest() throws Exception {
+        System.out.println("---Start test 'twoSubTaskReportProgressTest' ...");
         final JobsApi jobsApi = createJobsApi();
 
         final WorkerAction workerAction = new WorkerAction();
@@ -122,60 +125,75 @@ public class JobTrackingIT
         final String jobId = UUID.randomUUID().toString();
         final String correlationId = UUID.randomUUID().toString();
         jobsApi.createOrUpdateJob(jobId, newJob, correlationId);
-        System.out.println("New Job created for task: " + jobId);
+        System.out.println("--- twoSubTaskReportProgressTest New Job created for task: " + jobId);
 
         final JobTrackingWorkerReporter jobTrackingWorkerReporter = new JobTrackingWorkerReporter();
 
         final ConcurrentLinkedQueue<String> updates = new ConcurrentLinkedQueue<>();
-        for(int index=0; index<10000; index++){
+        for (int index = 0; index < 5; index++) {
             updates.add(jobId + "." + 1);
             updates.add(jobId + "." + 2 + "*");
         }
-        
+        System.out.println("--- twoSubTaskReportProgressTest '" + updates.size() + "' Updates to be sent for task: " + jobId);
         final List<Thread> threads = new ArrayList<>();
-        for(int index=0; index<10; index++){
+        for (int index = 0; index < 10; index++) {
             final Thread t = new Thread(() -> {
-               try{
-                   final String update = updates.poll();
-                   while(update!=null){
-                    jobTrackingWorkerReporter.reportJobTaskProgress(update, 0);                   
-                   }
-               }
-               catch(final Exception ex){
-                   System.out.println(ex);
-                   throw new RuntimeException(ex);
-               }
+                try {
+                    int totalUpdates = updates.size();
+                    int numberOfUpdatesProcessed = 0;
+                    while (numberOfUpdatesProcessed < totalUpdates) {
+                        final String update = updates.remove();
+                        jobTrackingWorkerReporter.reportJobTaskProgress(update, 0);
+                        numberOfUpdatesProcessed++;
+                        System.out.println("--- twoSubTaskReportProgressTest '" + updates.size() + "' Updates remaining to be sent for task: " + jobId);
+                    }
+                } catch(java.util.NoSuchElementException e)
+                {
+                } catch (final Exception ex) {
+                    System.out.println("--twoSubTaskReportProgressTest Exception : " + ex);
+                    throw new RuntimeException("twoSubTaskReportProgressTest", ex);
+                }
             });
             threads.add(t);
         }
-
-        for(final Thread t:threads){
+        System.out.println("--- twoSubTaskReportProgressTest Starting threads to update task: " + jobId);
+        for (final Thread t : threads) {
             t.start();
         }
-        
-        Thread.sleep(5000);
-        try{
+
+        //Thread.sleep(5000);
+        try {
+            System.out.println("--- twoSubTaskReportProgressTest Sending status 'Completed' for task: " + jobId + "." + 1);
             jobTrackingWorkerReporter.reportJobTaskComplete(jobId + "." + 1);
-        }
-        catch(final Exception ex){
-            System.out.println(ex);
+
+            
+        } catch (final Exception ex) {
+            System.out.println("--twoSubTaskReportProgressTest Sending status 'Completed' for task: " + jobId + "." + 1 + " : " + ex);
             return;
         }
-        
-        for(final Thread t:threads){
-            t.join();
+
+        try {
+            System.out.println("--- twoSubTaskReportProgressTest Sending status 'Completed' for task: " + jobId + "." + 2 + "*");
+            jobTrackingWorkerReporter.reportJobTaskComplete(jobId + "." + 2 + "*");
+        } catch (final Exception ex) {
+            System.out.println("--twoSubTaskReportProgressTest Sending status 'Completed' for task: " + jobId + "."  + 2 + "* : " + ex);
+            return;
         }
 
+        for (final Thread t : threads) {
+            t.join();
+        }
+        System.out.println("---'twoSubTaskReportProgressTest' Checking status of job : " + jobId);
         final Job job = jobsApi.getJob(jobId, correlationId);
         final Float complete = 100f;
-        System.out.println("Percentage Complete = " + job.getPercentageComplete());
+        System.out.println("---'twoSubTaskReportProgressTest Job: " + jobId + " Percentage Complete = " + job.getPercentageComplete());
         Assert.assertEquals(job.getPercentageComplete(), complete);
     }
-    
-    @Test(enabled=false)
-    public void test() throws Exception
-    {
-        System.out.println("thread started!");
+
+    @Test(enabled = true)
+    public void test() throws Exception {
+        System.out.println(
+                "--- Starting 'test' to check job status updates when status messages are received are out of order");
         final JobsApi jobsApi = createJobsApi();
 
         final WorkerAction workerAction = new WorkerAction();
@@ -192,20 +210,55 @@ public class JobTrackingIT
         final String jobId = UUID.randomUUID().toString();
         final String correlationId = UUID.randomUUID().toString();
         jobsApi.createOrUpdateJob(jobId, newJob, correlationId);
-        System.out.println("New Job created for task: " + jobId);
+        System.out.println("---'test' New Job created for task: " + jobId);
 
         final JobTrackingWorkerReporter jobTrackingWorkerReporter = new JobTrackingWorkerReporter();
+        System.out.println("---'test' Sending status update messages for job : " + jobId);
         jobTrackingWorkerReporter.reportJobTaskComplete(jobId + ".2*");
         jobTrackingWorkerReporter.reportJobTaskProgress(jobId + ".1", 0);
         jobTrackingWorkerReporter.reportJobTaskComplete(jobId + ".1");
+        System.out.println("---'test' Checking status of job : " + jobId);
         final Job job = jobsApi.getJob(jobId, correlationId);
         final Float complete = 100f;
-        System.out.println("Percentage Complete = " + job.getPercentageComplete());
+        System.out.println("---'test' Job: " + jobId + " Percentage Complete = " + job.getPercentageComplete());
         Assert.assertEquals(job.getPercentageComplete(), complete);
     }
 
-    private static JobsApi createJobsApi()
-    {
+    @Test(enabled = true)
+    public void testUpdateInReverse() throws Exception {
+        System.out.println(
+                "--- Starting 'testUpdateInReverse' to check job status updates when status messages are received in reverse order");
+        final JobsApi jobsApi = createJobsApi();
+
+        final WorkerAction workerAction = new WorkerAction();
+        workerAction.setTaskApiVersion(1);
+        workerAction.setTaskClassifier("some-task-classifier");
+        workerAction.setTargetPipe("some-target-pipe");
+        workerAction.setTaskPipe("some-task-pipe");
+        workerAction.setTaskData("some-task-data");
+
+        final NewJob newJob = new NewJob();
+        newJob.setName("Some Task");
+        newJob.setTask(workerAction);
+
+        final String jobId = UUID.randomUUID().toString();
+        final String correlationId = UUID.randomUUID().toString();
+        jobsApi.createOrUpdateJob(jobId, newJob, correlationId);
+        System.out.println("---'testUpdateInReverse' New Job created for task: " + jobId);
+
+        final JobTrackingWorkerReporter jobTrackingWorkerReporter = new JobTrackingWorkerReporter();
+        System.out.println("---'testUpdateInReverse' Sending status update messages for job : " + jobId);
+        jobTrackingWorkerReporter.reportJobTaskComplete(jobId + ".2*");
+        jobTrackingWorkerReporter.reportJobTaskComplete(jobId + ".1");
+        jobTrackingWorkerReporter.reportJobTaskProgress(jobId + ".1", 0);
+        System.out.println("---'testUpdateInReverse' Checking status of job : " + jobId);
+        final Job job = jobsApi.getJob(jobId, correlationId);
+        final Float complete = 100f;
+        System.out.println("---'testUpdateInReverse' Job: " + jobId + " Percentage Complete = " + job.getPercentageComplete());
+        Assert.assertEquals(job.getPercentageComplete(), complete);
+    }
+
+    private static JobsApi createJobsApi() {
         final String connectionString = System.getenv("webserviceurl");
         final ApiClient client = new ApiClient();
         client.setBasePath(connectionString);
