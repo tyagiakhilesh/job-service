@@ -16,12 +16,10 @@
 package com.hpe.caf.services.job.api;
 
 import com.hpe.caf.services.job.client.ApiClient;
-import com.hpe.caf.services.job.client.ApiException;
 import com.hpe.caf.services.job.client.api.JobsApi;
 import com.hpe.caf.services.job.client.model.Job;
 import com.hpe.caf.services.job.client.model.NewJob;
 import com.hpe.caf.services.job.client.model.WorkerAction;
-import com.hpe.caf.worker.jobtracking.JobReportingException;
 import com.hpe.caf.worker.jobtracking.JobTrackingWorkerReporter;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -29,11 +27,8 @@ import org.testng.annotations.Test;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Stack;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class JobTrackingIT
 {
@@ -62,7 +57,7 @@ public class JobTrackingIT
 
         final JobTrackingWorkerReporter jobTrackingWorkerReporter = new JobTrackingWorkerReporter();
 
-        ConcurrentLinkedQueue<String> updates = new ConcurrentLinkedQueue<>();
+        final ConcurrentLinkedQueue<String> updates = new ConcurrentLinkedQueue<>();
         for(int index=0; index<10000; index++){
             updates.add(jobId + "." + 1 + "*");
         }
@@ -131,9 +126,8 @@ public class JobTrackingIT
 
         final JobTrackingWorkerReporter jobTrackingWorkerReporter = new JobTrackingWorkerReporter();
 
-        ConcurrentLinkedQueue<String> updates = new ConcurrentLinkedQueue<>();
+        final ConcurrentLinkedQueue<String> updates = new ConcurrentLinkedQueue<>();
         for(int index=0; index<10000; index++){
-           
             updates.add(jobId + "." + 1);
             updates.add(jobId + "." + 2 + "*");
         }
