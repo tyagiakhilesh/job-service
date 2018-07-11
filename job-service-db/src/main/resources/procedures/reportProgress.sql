@@ -85,7 +85,10 @@ BEGIN
     --  Create parent task table if it does not exist.
     IF NOT EXISTS (SELECT 1 FROM pg_class where relname = v_parent_table_name )
     THEN
-      PERFORM internal_create_task_table(v_parent_table_name);
+        BEGIN
+        PERFORM internal_create_task_table(v_parent_table_name);
+        EXCEPTION WHEN unique_violation THEN RAISE NOTICE 'row skipped';
+        END;
     END IF;
 
     --  If status is completed then take a table lock on top most parent table as soon as possible in the transaction
@@ -97,11 +100,14 @@ BEGIN
       --  Create top most parent table if it does not exist.
       IF NOT EXISTS (SELECT 1 FROM pg_class where relname = v_topmost_parent_table_name )
       THEN
+          BEGIN
           PERFORM internal_create_task_table(v_topmost_parent_table_name);
+          EXCEPTION WHEN unique_violation THEN RAISE NOTICE 'row skipped';
+          END;
       END IF;
       EXECUTE format('LOCK TABLE %I IN EXCLUSIVE MODE', v_topmost_parent_table_name);
     END IF;
-
+    BEGIN
     --  This could be the first progress report against a job task. Make sure the job
     --  status is made Active if currently in state 'Waiting'.
     PERFORM 1 FROM job WHERE job_id = v_job_id AND status = 'Waiting' FOR UPDATE;
@@ -134,7 +140,8 @@ BEGIN
         WHERE NOT EXISTS (SELECT * FROM upsert)
       ',
       v_parent_table_name, in_status, in_task_id, v_is_final_task);
-
+      EXCEPTION WHEN unique_violation THEN RAISE NOTICE 'row skipped';
+      END;
     --  If status is completed, then rollup task completion status to parent(s).
     IF in_status = 'Completed' THEN
       RETURN QUERY
