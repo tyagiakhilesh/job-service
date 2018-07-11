@@ -59,7 +59,7 @@ BEGIN
 
     IF in_status = 'Completed' THEN
       --  If job is completed, then remove task tables associated with the job.
-      PERFORM internal_delete_task_table(v_job_id,false);
+      -- PERFORM internal_delete_task_table(v_job_id,false);
 
       -- Get a list of jobs that can run immediately and update the eligibility run date for others.
       RETURN QUERY
