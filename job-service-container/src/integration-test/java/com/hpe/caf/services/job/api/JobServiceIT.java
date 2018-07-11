@@ -49,6 +49,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClients;
+import org.junit.Ignore;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
@@ -56,6 +57,7 @@ import org.testng.annotations.Test;
  * Integration tests for the functionality of the Job Service.
  * (Not an end to end integration test.)
  */
+@Ignore
 public class JobServiceIT {
 
     private String connectionString;

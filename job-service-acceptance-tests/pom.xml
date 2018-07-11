@@ -116,12 +116,6 @@
             <artifactId>worker-testing-integration</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>com.github.jobservice</groupId>
-            <artifactId>worker-jobtracking</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
         <!-- Logging -->
         <dependency>
             <!--Required at runtime for log4j output-->

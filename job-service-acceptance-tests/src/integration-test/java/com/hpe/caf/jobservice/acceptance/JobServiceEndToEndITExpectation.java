@@ -17,12 +17,14 @@ package com.hpe.caf.jobservice.acceptance;
 
 import com.hpe.caf.api.worker.TaskStatus;
 import com.hpe.caf.worker.example.ExampleWorkerStatus;
+import org.junit.Ignore;
 
 import java.util.List;
 
 /**
  * Holds values to be used to verify test results.
  */
+@Ignore
 public class JobServiceEndToEndITExpectation {
     private final boolean expectJobCancellation;
     private final String trackTo;

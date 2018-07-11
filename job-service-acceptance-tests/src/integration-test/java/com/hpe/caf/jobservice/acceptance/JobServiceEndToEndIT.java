@@ -36,6 +36,7 @@ import com.hpe.caf.worker.testing.*;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.ParseException;
+import org.junit.Ignore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -62,6 +63,7 @@ import java.util.concurrent.TimeoutException;
  * the Job Service itself, Job Service Database, Batch Worker, and Job Tracking Worker.
  * The data processing worker used in this test is the Example Worker.
  */
+@Ignore
 public class JobServiceEndToEndIT {
     private static final String batchWorkerMessageInQueue = "batchworker-test-input-1";
     private static final String exampleWorkerMessageInQueue = "exampleworker-test-input-1";
