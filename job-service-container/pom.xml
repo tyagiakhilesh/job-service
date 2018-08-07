@@ -114,6 +114,12 @@
             <artifactId>httpclient</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.github.jobservice</groupId>
+            <artifactId>worker-jobtracking</artifactId>
+            <version>2.6.0-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <profiles>
@@ -290,7 +296,7 @@
                         <!-- pull in a normal postgres DB for integration tests -->
                         <image>
                             <alias>jobservice-integrationtests-postgres</alias>
-                            <name>postgres:9.4</name>
+                            <name>postgres:9.6</name>
                             <run>
                                 <ports>
                                     <port>${postgres.db.port}:5432</port>
@@ -300,6 +306,35 @@
                                     <POSTGRES_USER>postgres</POSTGRES_USER>
                                     <POSTGRES_DB>${db.name}</POSTGRES_DB>
                                 </env>
+                                <cmd> 
+                                    <arg>postgres</arg> 
+                                    <arg>-c</arg> 
+                                    <arg>log_min_messages=DEBUG5</arg> 
+                                    <arg>-c</arg> 
+                                    <arg>log_line_prefix=[%t] [Process_ID:  %p] [Session_ID: %c] [Transaction_ID: %x] [Database_Name: %d] :</arg> 
+                                    <arg>-c</arg> 
+                                    <arg>log_statement=all</arg> 
+                                    <arg>-c</arg> 
+                                    <arg>log_lock_waits=true</arg> 
+                                    <arg>-c</arg> 
+                                    <arg>log_duration=true</arg> 
+                                    <arg>-c</arg> 
+                                    <arg>log_connections=true</arg> 
+                                    <arg>-c</arg> 
+                                    <arg>debug_print_parse=true</arg> 
+                                    <arg>-c</arg> 
+                                    <arg>debug_print_rewritten=true</arg> 
+                                    <arg>-c</arg> 
+                                    <arg>debug_print_plan=true</arg> 
+                                    <arg>-c</arg> 
+                                    <arg>debug_pretty_print=true</arg> 
+                                    <arg>-c</arg> 
+                                    <arg>log_checkpoints=true</arg> 
+                                    <arg>-c</arg> 
+                                    <arg>log_min_duration_statement=0</arg> 
+                                    <arg>-c</arg> 
+                                    <arg>log_min_error_statement=DEBUG5</arg> 
+                                </cmd>
                                 <wait>
                                     <log>PostgreSQL init process complete</log>
                                     <time>120000</time>
